@@ -1,0 +1,74 @@
+# The exemples i
+
+config:
+  existingSecret: "oauth2-proxy-secrets" 
+  clientID: ""
+  clientSecret: ""
+  cookieSecret: ""
+  configFile: |
+    email_domains = ["*"]
+    
+    upstreams = [
+      "${URL-TO-KUBERNETES-SVC}/" 
+    ]
+
+extraArgs:
+  - "--provider=oidc"
+  - "--oidc-issuer-url=${URL-AUTH0}"
+  - "--oidc-audience-claim=aud"
+  - "--client-id=$(OAUTH2_PROXY_CLIENT_ID)"
+  - "--client-secret=$(OAUTH2_PROXY_CLIENT_SECRET)"
+  - "--cookie-path=/"
+  - "--cookie-domain=${DOMAIN-ACCESS}"
+  - "--custom-templates-dir=/data/custom-templates"
+  - "--redirect-url=https://${URL-REDIRECT}/oauth2/callback"
+  - "--code-challenge-method=S256"
+  - "--cookie-expire=15m"
+  - "--cookie-refresh=5m"
+  - "--cookie-secret=$(OAUTH2_PROXY_COOKIE_SECRET)"
+  - "--set-xauthrequest=true"
+  - "--pass-authorization-header=true"
+  - "--set-authorization-header=true"
+  - "--scope=openid email profile groups"
+  - "--allowed-group=${GROUPS}"
+  - "--show-debug-on-error=true"
+  - "--request-logging=true"
+  - "--pass-access-token=true"
+  - "--pass-authorization-header=true"
+  - "--skip-oidc-discovery=true"
+  - "--oidc-groups-claim=${NAMESPACE}/groups"
+  - "--oidc-extra-audience=${AUDIENCE}"
+  - "--login-url=https://${URL-AUTH0}/authorize"
+  - "--redeem-url=https://${URL-AUTH0}/oauth/token"
+  - "--oidc-jwks-url=https://${URL-AUTH0}/.well-known/jwks.json"
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/auth-url: "http://${URL-OAUTH2-PROXY}/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$scheme://$host$request_uri"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - ${DOMAIN-ACCESS}
+  rules:
+    - host: ${DOMAIN-ACCESS}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy
+                port:
+                  number: 4180
+  tls:
+    - secretName: tls
+      hosts:
+        - ${DOMAIN-ACCESS}
+
+service:
+  portNumber: 4180
+  externalPort: 4180
+
+replicaCount: 1
