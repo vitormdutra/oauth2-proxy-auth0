@@ -1,5 +1,3 @@
-# The exemples i
-
 config:
   existingSecret: "oauth2-proxy-secrets" 
   clientID: ""
